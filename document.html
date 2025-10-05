@@ -1,0 +1,288 @@
+<html>
+ <head></head>
+ <body>
+  &lt;!DOCTYPE html&gt;
+  <br>
+  &lt;html lang="ar"&gt;
+  <br>
+  &lt;head&gt;
+  <br>
+  &lt;meta charset="UTF-8"&gt;
+  <br>
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  <br>
+  &lt;title&gt;تطبيق حجز تذاكر الباصات&lt;/title&gt;
+  <br>
+  &lt;style&gt;
+  <br>
+  body { font-family: Arial; direction: rtl; background: #f0f2f5; margin:0; padding:20px; }
+  <br>
+  h1 { text-align: center; }
+  <br>
+  .container { max-width: 950px; margin:auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+  <br>
+  .flight-card { border-radius:10px; padding:15px; margin-bottom:15px; color:#fff; display:flex; justify-content:space-between; align-items:center; transition: transform 0.2s;}
+  <br>
+  .flight-card:hover { transform:scale(1.02);}
+  <br>
+  .flight-card button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;}
+  <br>
+  .flight-card.jeddah { background:#1E90FF; }
+  <br>
+  .flight-card.makkah { background:#FF8C00; }
+  <br>
+  .flight-card.madina { background:#32CD32; }
+  <br>
+  #seats { margin-top:25px; }
+  <br>
+  .seat { display:inline-block; width:50px; height:50px; line-height:50px; margin:3px; text-align:center; border-radius:8px; font-size:14px; cursor:pointer; transition:all 0.2s; }
+  <br>
+  .seat.available { background:#ccc; }
+  <br>
+  .seat.available:hover { background:#a0a0a0; transform:scale(1.2);}
+  <br>
+  .seat.selected { background:#4CAF50; color:#fff;}
+  <br>
+  .seat.selected:hover { box-shadow:0 0 10px #4CAF50; transform:scale(1.2);}
+  <br>
+  .seat.booked { background:#f44336; color:#fff; cursor:not-allowed; }
+  <br>
+  .aisle { display:inline-block; width:30px; }
+  <br>
+  .passenger { margin-bottom:10px; }
+  <br>
+  input, button { padding:10px; margin-top:10px; width:100%; box-sizing:border-box; }
+  <br>
+  #bookings { margin-top:20px; }
+  <br>
+  #bookings button { margin-bottom:10px; cursor:pointer; }
+  <br>
+  &lt;/style&gt;
+  <br>
+  &lt;/head&gt;
+  <br>
+  &lt;body&gt;
+  <br>
+  &lt;div class="container"&gt;
+  <br>
+  &lt;h1&gt;نظام حجز تذاكر الباصات&lt;/h1&gt;
+  <br>
+  &lt;h3&gt;الرحلات المتاحة&lt;/h3&gt;
+  <br>
+  &lt;div id="flights"&gt;&lt;/div&gt;
+  <br>
+  &lt;div id="seats" style="display:none;"&gt;
+  <br>
+  &lt;h3&gt;اختر مقاعد المسافرين&lt;/h3&gt;
+  <br>
+  &lt;div id="passenger-list"&gt;&lt;/div&gt;
+  <br>
+  &lt;div id="seat-map"&gt;&lt;/div&gt;
+  <br>
+  &lt;button onclick="confirmBooking()"&gt;تأكيد الحجز&lt;/button&gt;
+  <br>
+  &lt;/div&gt;
+  <br>
+  &lt;div id="bookings"&gt;
+  <br>
+  &lt;h3&gt;كشف الركاب&lt;/h3&gt;
+  <br>
+  &lt;button onclick="printBookings()"&gt;طباعة كشف الركاب&lt;/button&gt;
+  <br>
+  &lt;ul id="booking-list"&gt;&lt;/ul&gt;
+  <br>
+  &lt;/div&gt;
+  <br>
+  &lt;script&gt;
+  <br>
+  const flights = [
+  <br>
+  {id:1, from:"جدة", to:"مكة", time:"10:00", price:100, color:"jeddah"},
+  <br>
+  {id:2, from:"مكة", to:"المدينة", time:"12:00", price:150, color:"makkah"},
+  <br>
+  {id:3, from:"المدينة", to:"الرياض", time:"15:00", price:200, color:"madina"}
+  <br>
+  ];
+  <br>
+  let selectedFlight=null, selectedSeats={}, passengerNames=[], agentNames=[], bookings=[], seatStatus={};
+  <br>
+  if(localStorage.getItem('bookings')){
+  <br>
+  bookings=JSON.parse(localStorage.getItem('bookings'));
+  <br>
+  bookings.forEach(b=&gt;{ if(!seatStatus[b.flight.id]) seatStatus[b.flight.id]=new Set(); seatStatus[b.flight.id].add(b.seat); });
+  <br>
+  renderBookings();
+  <br>
+  }
+  <br>
+  function renderFlights(){
+  <br>
+  const container=document.getElementById('flights'); container.innerHTML='';
+  <br>
+  flights.forEach(f=&gt;{
+  <br>
+  const card=document.createElement('div'); card.className=`flight-card ${f.color}`;
+  <br>
+  card.innerHTML=`&lt;div&gt;&lt;strong&gt;${f.from} → ${f.to}&lt;/strong&gt;&lt;br&gt;الوقت: ${f.time} | السعر: ${f.price} ريال&lt;/div&gt;
+  <br>
+  &lt;button onclick="selectFlight(${f.id})"&gt;اختر الرحلة&lt;/button&gt;`;
+  <br>
+  container.appendChild(card);
+  <br>
+  });
+  <br>
+  }
+  <br>
+  function selectFlight(id){
+  <br>
+  selectedFlight=flights.find(f=&gt;f.id===id);
+  <br>
+  selectedSeats={}; passengerNames=[]; agentNames=[];
+  <br>
+  if(!seatStatus[selectedFlight.id]) seatStatus[selectedFlight.id]=new Set();
+  <br>
+  renderPassengerInputs(); renderSeats();
+  <br>
+  document.getElementById('seats').style.display='block';
+  <br>
+  }
+  <br>
+  function renderPassengerInputs(){
+  <br>
+  const container=document.getElementById('passenger-list'); container.innerHTML='';
+  <br>
+  let inputCount=prompt("كم عدد المسافرين؟ (حتى 49)"); inputCount=Math.min(inputCount,49);
+  <br>
+  for(let i=0;i&lt;inputCount;i++){
+  <br>
+  const div=document.createElement('div'); div.className='passenger';
+  <br>
+  div.innerHTML=`مسافر ${i+1}: &lt;input type="text" placeholder="اسم المسافر" data-index="${i}" oninput="updatePassengerName(this)"&gt; | وكيل: &lt;input type="text" placeholder="اسم الوكيل" data-index="${i}" oninput="updateAgentName(this)"&gt; &lt;span id="selected-seat-${i}"&gt;&lt;/span&gt;`;
+  <br>
+  container.appendChild(div);
+  <br>
+  passengerNames.push(""); agentNames.push("");
+  <br>
+  }
+  <br>
+  }
+  <br>
+  function updatePassengerName(input){ passengerNames[parseInt(input.dataset.index)]=input.value.trim();}
+  <br>
+  function updateAgentName(input){ agentNames[parseInt(input.dataset.index)]=input.value.trim();}
+  <br>
+  function renderSeats(){
+  <br>
+  const seatMap=document.getElementById('seat-map'); seatMap.innerHTML='';
+  <br>
+  const rows=7, seatsPerSide=3, rowLetters=['A','B','C','D','E','F','G'];
+  <br>
+  for(let r=0;r&lt;rows;r++){
+  <br>
+  for(let s=1;s&lt;=seatsPerSide;s++){
+  <br>
+  const seatId=rowLetters[r]+s, seat=document.createElement('div');
+  <br>
+  seat.className=seatStatus[selectedFlight.id].has(seatId)?'seat booked':'seat available';
+  <br>
+  seat.title=seatId; seat.textContent=seatId;
+  <br>
+  seat.onclick=()=&gt;selectSeat(seat,seatId);
+  <br>
+  seatMap.appendChild(seat);
+  <br>
+  }
+  <br>
+  const aisle=document.createElement('div'); aisle.className='aisle'; seatMap.appendChild(aisle);
+  <br>
+  for(let s=1;s&lt;=seatsPerSide;s++){
+  <br>
+  const seatId=rowLetters[r]+(s+seatsPerSide), seat=document.createElement('div');
+  <br>
+  seat.className=seatStatus[selectedFlight.id].has(seatId)?'seat booked':'seat available';
+  <br>
+  seat.title=seatId; seat.textContent=seatId;
+  <br>
+  seat.onclick=()=&gt;selectSeat(seat,seatId);
+  <br>
+  seatMap.appendChild(seat);
+  <br>
+  }
+  <br>
+  seatMap.appendChild(document.createElement('br'));
+  <br>
+  }
+  <br>
+  }
+  <br>
+  function selectSeat(seatDiv, seatId){
+  <br>
+  if(seatStatus[selectedFlight.id].has(seatId)){ alert("هذا المقعد محجوز مسبقًا!"); return;}
+  <br>
+  for(let key in selectedSeats) if(selectedSeats[key]===seatId){ alert("هذا المقعد مختار لمسافر آخر!"); return;}
+  <br>
+  const passengerIndex=passengerNames.findIndex((n,idx)=&gt;n &amp;&amp; !selectedSeats[idx]);
+  <br>
+  if(passengerIndex===-1){ alert("يرجى إدخال جميع الأسماء أولاً"); return;}
+  <br>
+  selectedSeats[passengerIndex]=seatId;
+  <br>
+  document.getElementById(`selected-seat-${passengerIndex}`).textContent=` | المقعد: ${seatId}`;
+  <br>
+  seatDiv.classList.add('selected');
+  <br>
+  }
+  <br>
+  function confirmBooking(){
+  <br>
+  for(let i=0;i&lt;passengerNames.length;i++){
+  <br>
+  const name=passengerNames[i], seat=selectedSeats[i], agent=agentNames[i]||'';
+  <br>
+  if(!name||!seat){ alert("الرجاء إدخال جميع الأسماء واختيار المقاعد"); return;}
+  <br>
+  bookings.push({flight:selectedFlight, seat, name, agent});
+  <br>
+  seatStatus[selectedFlight.id].add(seat);
+  <br>
+  }
+  <br>
+  localStorage.setItem('bookings', JSON.stringify(bookings));
+  <br>
+  alert("تم الحجز بنجاح!");
+  <br>
+  selectedSeats={}; passengerNames=[]; agentNames=[];
+  <br>
+  renderBookings(); renderPassengerInputs(); renderSeats();
+  <br>
+  }
+  <br>
+  function renderBookings(){
+  <br>
+  const list=document.getElementById('booking-list'); list.innerHTML='';
+  <br>
+  bookings.forEach(b=&gt;{
+  <br>
+  const li=document.createElement('li'); li.textContent=`${b.name} | ${b.flight.from} → ${b.flight.to} | المقعد: ${b.seat} | الوكيل: ${b.agent}`;
+  <br>
+  list.appendChild(li);
+  <br>
+  });
+  <br>
+  }
+  <br>
+  function printBookings(){
+  <br>
+  let printWindow=window.open('','','width=900,height=600');
+  <br>
+  printWindow.document.write('&lt;html&gt;&lt;head&gt;&lt;title&gt;كشف الركاب&lt;/title&gt;&lt;style&gt;body{font-family:Arial;direction:rtl;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #000;padding:8px;text-align:center;}th{background:#ddd;}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;');
+  <br>
+  printWindow.document.write('&lt;h2&gt;كشف الركاب&lt;/h2&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;المسافر&lt;/th&gt;&lt;th&gt;الرحلة&lt;/th&gt;&lt;th&gt;المقعد&lt;/th&gt;&lt;th&gt;الوكيل&lt;/th&gt;&lt;/tr&gt;');
+  <br>
+  bookings.forEach(b=&gt;{ printWindow.document.write(`&lt;tr&gt;&lt;td&gt;${b.name}&lt;/td&gt;&lt;td&gt;${b.flight.from} → ${b.flight.to}&lt;/td&gt;&lt;td&gt;${b.seat}&lt;/td&gt;&lt;td&gt;${b.agent}&lt;/td&gt;&lt;/tr&gt;`); });
+  <br>
+  printWindow.document.write('&lt;/table&gt;&lt;/
+ </body>
+</html>
